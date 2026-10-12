@@ -83,6 +83,28 @@ select{font:inherit;padding:8px;border-radius:10px;border:2px solid var(--line);
     </div>
     <label class="row"><input type="checkbox" id="sspeak" checked> Decir en voz alta las señas reconocidas</label>
     <div class="signs" id="signs"></div>
+
+    <button id="gopen" style="margin-top:12px">Enseñar el alfabeto paso a paso</button>
+    <div id="guide" hidden style="margin-top:10px;padding:12px;border-radius:14px;background:var(--bg);text-align:center">
+      <p class="sub" style="margin:0 0 4px">Mira tu imagen del alfabeto, haz esta seña frente a la cámara y toca Grabar.</p>
+      <div id="gletter" style="font-size:4rem;font-weight:800;line-height:1.1">A</div>
+      <div id="gprog" class="sub"></div>
+      <div id="gnote" class="sub"></div>
+      <div class="trainrow" style="justify-content:center">
+        <button id="gback">Anterior</button>
+        <button id="grec" style="background:var(--a);color:#fff;border:none;font-weight:700">Grabar esta letra</button>
+        <button id="gskip">Saltar</button>
+      </div>
+    </div>
+
+    <h2 style="margin-top:16px">Palabra deletreada</h2>
+    <div id="word" class="live empty" aria-live="polite">Las letras reconocidas aparecerán aquí.</div>
+    <div class="trainrow">
+      <button id="wsp">Espacio</button>
+      <button id="wdel">Borrar letra</button>
+      <button id="wsay">Decir palabra</button>
+    </div>
+    <p class="sub" style="margin:8px 0 0">Para repetir una letra (como en "LL"), baja la mano un momento y vuelve a hacerla.</p>
   </section>
 
   <section aria-labelledby="h-conv">
@@ -161,6 +183,7 @@ select{font:inherit;padding:8px;border-radius:10px;border:2px solid var(--line);
   var $=function(i){return document.getElementById(i)};
   var camBtn=$('camBtn'),cam=$('cam'),vid=$('vid'),cnv=$('cnv'),ctx=cnv.getContext('2d'),
       st=$('sstatus'),det=$('sdet'),nameIn=$('sname'),teach=$('teach'),list=$('signs'),spk=$('sspeak');
+  var SET='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').concat(['1','2','3','4','5','6','7','8','9','10']),word='';
   var samples=[],landmarker=null,stream=null,running=false,lastT=-1,capturing=null,cand='',cnt=0,emitted='',miss=0;
   try{samples=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){samples=[]}
   function save(){try{localStorage.setItem(KEY,JSON.stringify(samples))}catch(e){}}
@@ -205,7 +228,7 @@ select{font:inherit;padding:8px;border-radius:10px;border:2px solid var(--line);
       if(capturing.go){
         samples.push({l:capturing.l,v:v}); capturing.left--;
         st.textContent='Grabando… '+capturing.left;
-        if(capturing.left<=0){save();renderList();st.textContent='Listo: aprendí la seña "'+capturing.l+'". Grábala otra vez con otro ángulo para mejorar.';capturing=null;teach.disabled=false}
+        if(capturing.left<=0){save();renderList();st.textContent='Listo: aprendí la seña "'+capturing.l+'". Grábala otra vez con otro ángulo para mejorar.';var cb=capturing.cb;capturing=null;teach.disabled=false;if(cb)cb()}
       }
       return;
     }
@@ -213,7 +236,8 @@ select{font:inherit;padding:8px;border-radius:10px;border:2px solid var(--line);
     det.textContent=l?l:'';
     if(l&&l===cand) cnt++; else {cand=l;cnt=l?1:0}
     if(l&&cnt>=NEED&&emitted!==l){
-      emitted=l; window.Puente.add('you','🤟 '+l);
+      emitted=l;
+      if(SET.indexOf(l)>=0){word+=l;setWord()} else window.Puente.add('you','🤟 '+l);
       if(spk.checked) window.Puente.say(l);
     }
   }
@@ -246,14 +270,35 @@ select{font:inherit;padding:8px;border-radius:10px;border:2px solid var(--line);
     cam.classList.remove('on'); camBtn.textContent='Activar cámara'; st.textContent=''; det.textContent='';
   }
   camBtn.onclick=function(){running?stopCam():startCam()};
+  function startTeach(l,cb){
+    if(!running){st.textContent='Primero activa la cámara.';return}
+    if(capturing)return;
+    teach.disabled=true; st.textContent='Prepara la seña "'+l+'"… empiezo en 3 segundos.';
+    capturing={l:l,left:SHOTS,go:false,cb:cb};
+    setTimeout(function(){if(capturing)capturing.go=true},3000);
+  }
   teach.onclick=function(){
     var l=nameIn.value.trim();
-    if(!running){st.textContent='Primero activa la cámara.';return}
     if(!l){st.textContent='Escribe el nombre de la seña.';return}
-    teach.disabled=true; st.textContent='Prepara la seña… empiezo en 3 segundos.';
-    capturing={l:l,left:SHOTS,go:false};
-    setTimeout(function(){if(capturing)capturing.go=true},3000);
+    startTeach(l);
   };
+
+  var gi=0,gp=$('guide'),gl=$('gletter'),gprog=$('gprog'),gnote=$('gnote');
+  function gshow(){
+    if(gi>=SET.length){gl.textContent='✔';gprog.textContent='¡Terminaste el alfabeto!';gnote.textContent='';return}
+    var l=SET[gi]; gl.textContent=l; gprog.textContent=(gi+1)+' de '+SET.length;
+    gnote.textContent=(l==='J'||l==='Z')?'Esta letra lleva movimiento: la app aprende solo la forma inicial de la mano.':'';
+  }
+  $('gopen').onclick=function(){gp.hidden=!gp.hidden;if(!gp.hidden)gshow()};
+  $('grec').onclick=function(){if(gi<SET.length)startTeach(SET[gi],function(){gi++;gshow()})};
+  $('gskip').onclick=function(){if(gi<SET.length){gi++;gshow()}};
+  $('gback').onclick=function(){if(gi>0){gi--;gshow()}};
+
+  var wordEl=$('word');
+  function setWord(){wordEl.textContent=word||'Las letras reconocidas aparecerán aquí.';wordEl.classList.toggle('empty',!word)}
+  $('wsp').onclick=function(){word+=' ';setWord()};
+  $('wdel').onclick=function(){word=word.slice(0,-1);setWord()};
+  $('wsay').onclick=function(){if(word.trim()){window.Puente.say(word);word='';setWord()}};
 })();
 </script>
 </body>
