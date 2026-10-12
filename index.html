@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Puente: conversar sin barreras</title>
+<style>
+:root{--bg:#f3f6fb;--card:#fff;--ink:#14213d;--mute:#5b6784;--a:#1d4ed8;--b:#0f766e;--line:#d5dcea;--you:#dbe7ff;--me:#d6f2ee;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1424;--card:#172038;--ink:#eef2fb;--mute:#9aa6c4;--a:#7aa2ff;--b:#4fd1c0;--line:#2a3558;--you:#22345f;--me:#15403c}}
+:root[data-theme="dark"]{--bg:#0e1424;--card:#172038;--ink:#eef2fb;--mute:#9aa6c4;--a:#7aa2ff;--b:#4fd1c0;--line:#2a3558;--you:#22345f;--me:#15403c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:18px;line-height:1.45}
+main{max-width:640px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+h1{font-size:1.5rem;margin:4px 0 0}
+p.sub{margin:0;color:var(--mute);font-size:1rem}
+section{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:14px}
+h2{font-size:1.1rem;margin:0 0 10px}
+button{font:inherit;cursor:pointer;border-radius:14px;border:2px solid var(--line);background:var(--card);color:var(--ink);padding:12px 16px;min-height:48px}
+button:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--a);outline-offset:2px}
+.big{width:100%;font-weight:700;font-size:1.15rem;color:#fff;border:none;min-height:60px}
+#listen{background:var(--a)}
+#listen.on{background:#b91c1c}
+#speak{background:var(--b);margin-top:10px}
+textarea{width:100%;font:inherit;padding:12px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical;min-height:90px}
+.live{min-height:70px;font-size:1.6rem;line-height:1.35;margin-top:12px;padding:12px;border-radius:14px;background:var(--you);overflow-wrap:anywhere}
+.live.empty{color:var(--mute);font-size:1rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chips button{padding:8px 12px;min-height:44px;font-size:1rem}
+#log{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto}
+.m{padding:10px 12px;border-radius:14px;max-width:88%;overflow-wrap:anywhere}
+.m.you{background:var(--you);align-self:flex-start}
+.m.me{background:var(--me);align-self:flex-end}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:1rem;color:var(--mute)}
+select{font:inherit;padding:8px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink)}
+#msg{color:#b91c1c;margin:8px 0 0;font-size:1rem}
+.cam{position:relative;margin-top:10px;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3;display:none}
+.cam.on{display:block}
+.cam video,.cam canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#sstatus{margin:10px 0 0;font-size:1rem;color:var(--mute)}
+#sdet{font-size:1.6rem;font-weight:700;margin-top:8px;min-height:2.2rem}
+.trainrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.trainrow input{flex:1;min-width:140px;font:inherit;padding:10px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+.signs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.signs button{padding:6px 12px;min-height:40px;font-size:1rem}
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>Puente</h1>
+    <p class="sub">Conversa en español con una persona sorda o que no puede hablar.</p>
+  </div>
+
+  <section aria-labelledby="h-oir">
+    <h2 id="h-oir">Para leer lo que dicen</h2>
+    <button id="listen" class="big" aria-pressed="false">Empezar a escuchar</button>
+    <div id="live" class="live empty" aria-live="polite">Lo que diga la otra persona aparecerá aquí.</div>
+    <p id="msg" role="alert"></p>
+  </section>
+
+  <section aria-labelledby="h-hablar">
+    <h2 id="h-hablar">Para responder</h2>
+    <textarea id="text" placeholder="Escribe aquí tu mensaje" aria-label="Mensaje a decir en voz alta"></textarea>
+    <button id="speak" class="big">Decir en voz alta</button>
+    <div class="chips" id="chips"></div>
+    <div class="row">
+      <label for="rate">Velocidad de voz</label>
+      <select id="rate"><option value="0.8">Lenta</option><option value="1" selected>Normal</option><option value="1.2">Rápida</option></select>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-senas">
+    <h2 id="h-senas">Señas con la cámara</h2>
+    <p class="sub">Enseña a la app tus señas y luego reconocerá esas señas con una mano.</p>
+    <button id="camBtn" class="big" style="background:var(--a);margin-top:10px">Activar cámara</button>
+    <div class="cam" id="cam"><video id="vid" playsinline muted></video><canvas id="cnv"></canvas></div>
+    <p id="sstatus" role="status"></p>
+    <div id="sdet" aria-live="polite"></div>
+    <div class="trainrow">
+      <input id="sname" placeholder="Nombre de la seña (ej. Hola)" aria-label="Nombre de la seña">
+      <button id="teach">Enseñar seña</button>
+    </div>
+    <label class="row"><input type="checkbox" id="sspeak" checked> Decir en voz alta las señas reconocidas</label>
+    <div class="signs" id="signs"></div>
+  </section>
+
+  <section aria-labelledby="h-conv">
+    <h2 id="h-conv">Conversación</h2>
+    <div id="log"><p class="sub">Aún no hay mensajes.</p></div>
+    <div class="row"><button id="clear">Borrar conversación</button></div>
+  </section>
+</main>
+
+<script>
+(function(){
+  var listenBtn=document.getElementById('listen'), live=document.getElementById('live'),
+      msg=document.getElementById('msg'), log=document.getElementById('log'),
+      text=document.getElementById('text'), speakBtn=document.getElementById('speak'),
+      rate=document.getElementById('rate'), chipsEl=document.getElementById('chips');
+  var LANG='es-PE', rec=null, listening=false, empty=true;
+
+  var phrases=['Hola','Gracias','Por favor','Sí','No','No entiendo, escribe por favor','Más despacio','Necesito ayuda','¿Dónde está el baño?','Espera un momento'];
+  phrases.forEach(function(p){
+    var b=document.createElement('button'); b.textContent=p;
+    b.onclick=function(){say(p)}; chipsEl.appendChild(b);
+  });
+
+  function add(who,t){
+    if(empty){log.innerHTML='';empty=false}
+    var d=document.createElement('div'); d.className='m '+who; d.textContent=t;
+    log.appendChild(d); log.scrollTop=log.scrollHeight;
+  }
+
+  function say(t){
+    t=(t||'').trim(); if(!t) return;
+    if(!('speechSynthesis' in window)){msg.textContent='Tu navegador no puede leer en voz alta.';return}
+    speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance(t); u.lang=LANG; u.rate=parseFloat(rate.value);
+    var vs=speechSynthesis.getVoices().filter(function(v){return v.lang&&v.lang.toLowerCase().indexOf('es')===0});
+    if(vs.length) u.voice=vs[0];
+    speechSynthesis.speak(u); add('me',t);
+  }
+  speakBtn.onclick=function(){say(text.value); text.value=''};
+  text.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();speakBtn.click()}});
+
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  function stop(){listening=false; listenBtn.classList.remove('on'); listenBtn.setAttribute('aria-pressed','false'); listenBtn.textContent='Empezar a escuchar'; if(rec){try{rec.stop()}catch(e){}}}
+  function start(){
+    if(!SR){msg.textContent='Este navegador no reconoce voz. Prueba con Chrome o Edge.';return}
+    msg.textContent=''; rec=new SR(); rec.lang=LANG; rec.continuous=true; rec.interimResults=true;
+    rec.onresult=function(e){
+      var interim='';
+      for(var i=e.resultIndex;i<e.results.length;i++){
+        var r=e.results[i];
+        if(r.isFinal){var t=r[0].transcript.trim(); if(t) add('you',t)} else interim+=r[0].transcript;
+      }
+      live.classList.toggle('empty',!interim);
+      live.textContent=interim||'Escuchando…';
+    };
+    rec.onerror=function(e){
+      if(e.error==='not-allowed'||e.error==='service-not-allowed'){msg.textContent='Permite el micrófono en tu navegador para usar esta función.';stop()}
+      else if(e.error!=='no-speech'&&e.error!=='aborted'){msg.textContent='Error de micrófono: '+e.error}
+    };
+    rec.onend=function(){ if(listening){try{rec.start()}catch(e){}} };
+    listening=true; listenBtn.classList.add('on'); listenBtn.setAttribute('aria-pressed','true'); listenBtn.textContent='Detener';
+    live.classList.add('empty'); live.textContent='Escuchando…';
+    try{rec.start()}catch(e){}
+  }
+  listenBtn.onclick=function(){listening?stop():start()};
+  document.getElementById('clear').onclick=function(){log.innerHTML='<p class="sub">Aún no hay mensajes.</p>';empty=true};
+  window.Puente={add:add,say:say};
+  if('speechSynthesis' in window) speechSynthesis.getVoices();
+})();
+</script>
+<script>
+(function(){
+  var V='0.10.14', BASE='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@'+V,
+      MODEL='https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+      KEY='puente-senas-v1', THRESH=1.1, K=5, NEED=10, SHOTS=25;
+  var $=function(i){return document.getElementById(i)};
+  var camBtn=$('camBtn'),cam=$('cam'),vid=$('vid'),cnv=$('cnv'),ctx=cnv.getContext('2d'),
+      st=$('sstatus'),det=$('sdet'),nameIn=$('sname'),teach=$('teach'),list=$('signs'),spk=$('sspeak');
+  var samples=[],landmarker=null,stream=null,running=false,lastT=-1,capturing=null,cand='',cnt=0,emitted='',miss=0;
+  try{samples=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){samples=[]}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(samples))}catch(e){}}
+
+  function renderList(){
+    list.innerHTML='';
+    var by={}; samples.forEach(function(s){by[s.l]=(by[s.l]||0)+1});
+    Object.keys(by).forEach(function(l){
+      var b=document.createElement('button'); b.textContent=l+' ✕'; b.title='Borrar la seña '+l;
+      b.onclick=function(){samples=samples.filter(function(s){return s.l!==l});save();renderList()};
+      list.appendChild(b);
+    });
+    if(!Object.keys(by).length) list.innerHTML='<span class="sub">Aún no hay señas enseñadas.</span>';
+  }
+  renderList();
+
+  function norm(lm){
+    var w=lm[0],p=lm.map(function(q){return[q.x-w.x,q.y-w.y,q.z-w.z]}),m=0;
+    p.forEach(function(q){m=Math.max(m,Math.hypot(q[0],q[1],q[2]))}); m=m||1;
+    var out=[]; p.forEach(function(q){out.push(q[0]/m,q[1]/m,q[2]/m)}); return out;
+  }
+  function dist(a,b){var s=0;for(var i=0;i<a.length;i++){var d=a[i]-b[i];s+=d*d}return Math.sqrt(s)}
+  function predict(v){
+    if(!samples.length) return '';
+    var ds=samples.map(function(s){return{l:s.l,d:dist(v,s.v)}}).sort(function(a,b){return a.d-b.d}).slice(0,K);
+    if(ds[0].d>THRESH) return '';
+    var votes={}; ds.forEach(function(x){if(x.d<=THRESH)votes[x.l]=(votes[x.l]||0)+1});
+    return Object.keys(votes).sort(function(a,b){return votes[b]-votes[a]})[0]||'';
+  }
+  function draw(lm){
+    ctx.clearRect(0,0,cnv.width,cnv.height);
+    if(!lm) return;
+    ctx.fillStyle='#22d3ee';
+    lm.forEach(function(p){ctx.beginPath();ctx.arc(p.x*cnv.width,p.y*cnv.height,5,0,7);ctx.fill()});
+  }
+  function frame(res){
+    var lm=res.landmarks&&res.landmarks[0];
+    draw(lm);
+    if(!lm){ if(++miss>15){emitted='';cand='';cnt=0;if(!capturing)det.textContent=''} return; }
+    miss=0; var v=norm(lm);
+    if(capturing){
+      if(capturing.go){
+        samples.push({l:capturing.l,v:v}); capturing.left--;
+        st.textContent='Grabando… '+capturing.left;
+        if(capturing.left<=0){save();renderList();st.textContent='Listo: aprendí la seña "'+capturing.l+'". Grábala otra vez con otro ángulo para mejorar.';capturing=null;teach.disabled=false}
+      }
+      return;
+    }
+    var l=predict(v);
+    det.textContent=l?l:'';
+    if(l&&l===cand) cnt++; else {cand=l;cnt=l?1:0}
+    if(l&&cnt>=NEED&&emitted!==l){
+      emitted=l; window.Puente.add('you','🤟 '+l);
+      if(spk.checked) window.Puente.say(l);
+    }
+  }
+  function loop(){
+    if(!running) return;
+    if(vid.readyState>=2&&vid.currentTime!==lastT){
+      lastT=vid.currentTime;
+      cnv.width=vid.videoWidth; cnv.height=vid.videoHeight;
+      try{frame(landmarker.detectForVideo(vid,performance.now()))}catch(e){}
+    }
+    requestAnimationFrame(loop);
+  }
+  async function startCam(){
+    camBtn.disabled=true; st.textContent='Cargando el modelo de manos (puede tardar unos segundos)…';
+    try{
+      var mod=await import(BASE+'/vision_bundle.mjs');
+      var fs=await mod.FilesetResolver.forVisionTasks(BASE+'/wasm');
+      landmarker=await mod.HandLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:MODEL},runningMode:'VIDEO',numHands:1});
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:640,height:480},audio:false});
+      vid.srcObject=stream; await vid.play();
+      cam.classList.add('on'); running=true; camBtn.textContent='Apagar cámara'; camBtn.disabled=false;
+      st.textContent='Cámara lista. Muestra una mano.'; loop();
+    }catch(e){
+      camBtn.disabled=false;
+      st.textContent='No se pudo iniciar la cámara. Revisa el permiso de cámara y tu conexión. Si abriste la app desde el enlace de Claude, esta función necesita estar en tu propia página web (Netlify o GitHub Pages).';
+    }
+  }
+  function stopCam(){
+    running=false; if(stream)stream.getTracks().forEach(function(t){t.stop()});
+    cam.classList.remove('on'); camBtn.textContent='Activar cámara'; st.textContent=''; det.textContent='';
+  }
+  camBtn.onclick=function(){running?stopCam():startCam()};
+  teach.onclick=function(){
+    var l=nameIn.value.trim();
+    if(!running){st.textContent='Primero activa la cámara.';return}
+    if(!l){st.textContent='Escribe el nombre de la seña.';return}
+    teach.disabled=true; st.textContent='Prepara la seña… empiezo en 3 segundos.';
+    capturing={l:l,left:SHOTS,go:false};
+    setTimeout(function(){if(capturing)capturing.go=true},3000);
+  };
+})();
+</script>
+</body>
+</html>
